@@ -62,18 +62,41 @@ class ContentExtractor:
 			ValueError: If the source type is unsupported.
 		"""
 		try:
-			if self.is_url(source):
-				if any(pattern in source for pattern in self.content_extractor_config.get('youtube_url_patterns', [])):
+			if source.lower().endswith('.pdf'):
+				return self.pdf_extractor.extract_content(source)
+			elif self.is_url(source):
+				if any(pattern in source for pattern in self.content_extractor_config['youtube_url_patterns']):
 					return self.youtube_transcriber.extract_transcript(source)
 				else:
 					return self.website_extractor.extract_content(source)
-			elif source.lower().endswith('.pdf'):
-				return self.pdf_extractor.extract_content(source)
 			else:
 				raise ValueError("Unsupported source type")
 		except Exception as e:
 			logger.error(f"Error extracting content from {source}: {str(e)}")
 			raise
+	
+	def generate_topic_content(self, topic: str) -> str:
+		"""
+		Generate content based on a given topic using a generative model.
+
+		Args:
+			topic (str): The topic to generate content for.
+
+		Returns:
+			str: Generated content based on the topic.
+		"""
+		try:
+			import google.generativeai as genai
+
+			model = genai.GenerativeModel('models/gemini-1.5-flash-002')
+			topic_prompt = f'Be detailed. Search for {topic}'
+			response = model.generate_content(contents=topic_prompt, tools='google_search_retrieval')
+			
+			return response.candidates[0].content.parts[0].text
+		except Exception as e:
+			logger.error(f"Error generating content for topic '{topic}': {str(e)}")
+			raise
+		
 
 def main(seed: int = 42) -> None:
 	"""
